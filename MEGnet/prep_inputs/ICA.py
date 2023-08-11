@@ -9,7 +9,7 @@
 # READ HCP ICAs in using MNE-hcp
 # Do we need to write topoplot to file - or direct classifiction?
 
-import os
+import os, os.path as op
 import numpy as np
 import matplotlib.pyplot as plt
 import mne
@@ -35,6 +35,10 @@ from mne.viz.topomap import _check_extrapolate, _make_head_outlines, _prepare_to
 from mne.viz.utils import _setup_vmin_vmax, _get_cmap, plt_show
 from scipy.io import savemat
 import PIL.Image
+import MEGnet
+from MEGnet.megnet_utilities import fPredictChunkAndVoting_parrallel
+import functools
+
 
 # =============================================================================
 # Helper Functions
@@ -752,8 +756,103 @@ def main(filename, outbasename=None, mains_freq=60,
       outfname = f'{results_dir}/ICATimeSeries.mat' #'{file_base}-ica-ts.mat'
       savemat(outfname, {'arrICATimeSeries':ica_ts})
     
-  
+def classify_ica(results_dir=None, outbasename=None):
+    '''
+    Run the ICA timeseries and spatial maps generated during the main processing
+    through the MEGNET tensorflow model (using the CPU)
+
+    Parameters
+    ----------
+    results_dir : str, optional
+        Path to the output directory from the main processing
+        Contains the spatial maps and time series
+
+    Returns
+    -------
+    dict
+        dictionary with keys: (classes, bads_idx)
+
+    '''
+    from scipy.io import loadmat
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+    os.environ["CUDA_VISIBLE_DEVICES"] = ""
+    from tensorflow import keras
+    model_path = op.join(MEGnet.__path__[0] ,  'model_v2')
+    # This is set to use CPU in initial import
+    kModel=keras.models.load_model(model_path)
     
+    #Set output names
+    if outbasename != None:
+        file_base = outbasename #Necessary for 4D datasets
+    else:
+        file_base = os.path.basename(filename)
+        file_base = os.path.splitext(file_base)[0]
+    results_dir = os.path.join(results_dir, file_base)
+    
+    outfname = f'{results_dir}/ICATimeSeries.mat'
+    arrSP_fnames = [op.join(results_dir, f'component{i}.mat') for i in range(1,21)]
+    arrTS = loadmat(op.join(results_dir, 'ICATimeSeries.mat'))['arrICATimeSeries'].T
+    arrSP = np.stack([loadmat(i)['array'] for i in arrSP_fnames])
+    preds, probs = fPredictChunkAndVoting_parrallel(kModel, arrTS, arrSP)
+    meg_rest_ica_classes = preds.argmax(axis=1)
+    ica_comps_toremove = [index for index, value in enumerate(meg_rest_ica_classes) if value in [1, 2, 3]]
+    return {'classes':meg_rest_ica_classes,
+            'bads_idx': ica_comps_toremove}
+
+def clean_ica(bad_comps=None, results_dir=None, outbasename=None,
+              raw_dataset=None):         # Remove identified ICA components    
+    print("removing ica components")
+        #Set output names
+    if outbasename != None:
+        file_base = outbasename #Necessary for 4D datasets
+    else:
+        file_base = os.path.basename(filename)
+        file_base = os.path.splitext(file_base)[0]
+    results_dir = os.path.join(results_dir, file_base)
+    
+    ica_fname = op.join(results_dir, file_base +'_0-ica.fif')
+    ica=mne.preprocessing.read_ica(ica_fname) 
+    ica.exclude = bad_comps
+    raw=load_data(raw_dataset)
+    ica.apply(raw)    
+    outfname = op.join(results_dir, 'ica_clean.fif')
+    raw.save(outfname)
+    
+def check_datatype(filename):               # function to determine the file format of MEG data 
+    '''Check datatype based on the vendor naming convention to choose best loader'''
+    if os.path.splitext(filename)[-1] == '.ds':
+        return 'ctf'
+    elif os.path.splitext(filename)[-1] == '.fif':
+        return 'fif'
+    elif os.path.splitext(filename)[-1] == '.4d' or ',' in str(filename):
+        return '4d'
+    elif os.path.splitext(filename)[-1] == '.sqd':
+        return 'kit'
+    elif os.path.splitext(filename)[-1] == 'con':
+        return 'kit'
+    else:
+        raise ValueError('Could not detect datatype')
+        
+def return_dataloader(datatype):            # function to return a data loader based on file format
+    '''Return the dataset loader for this dataset'''
+    if datatype == 'ctf':
+        return functools.partial(mne.io.read_raw_ctf, system_clock='ignore',
+                                 clean_names=True)
+    if datatype == 'fif':
+        return functools.partial(mne.io.read_raw_fif, allow_maxshield=True)
+    if datatype == '4d':
+        return mne.io.read_raw_bti
+    if datatype == 'kit':
+        return mne.io.read_raw_kit
+
+def load_data(filename):                    # simple function to load raw MEG data
+    datatype = check_datatype(filename)
+    dataloader = return_dataloader(datatype)
+    raw = dataloader(filename, preload=True)
+    return raw
+
+#%%
     
 if __name__ == '__main__':
     import argparse
@@ -778,6 +877,10 @@ if __name__ == '__main__':
                         required=False)
     parser.add_argument('-results_dir', help='Path to save the results')
     parser.add_argument('-line_freq', help='{60,50} Hz - AC electric frequency')
+    # parser.add_argument('-clean_data', 
+    #                     help='''Perform classification of the ICA components and
+    #                     generate the ICA cleaned dataset''',
+    #                     default=True)
     args = parser.parse_args()
     
     filename = args.filename
@@ -786,4 +889,15 @@ if __name__ == '__main__':
     main(filename, outbasename=args.outbasename, mains_freq=[mains_freq], 
              save_preproc=True, save_ica=True, seedval=0, filename_raw=args.filename_raw,
              results_dir=args.results_dir)
+    
+    ica_dict = classify_ica(results_dir=args.results_dir, outbasename=args.outbasename)
+    
+    clean_ica(bad_comps=ica_dict['bads_idx'], results_dir=args.results_dir,
+              raw_dataset=args.filename, outbasename=args.outbasename)
+    
+    
+    
+    
+    
+    
 
