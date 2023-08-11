@@ -6,6 +6,8 @@ SHELL=/bin/bash
 CONDA_ACTIVATE=source $$(conda info --base)/etc/profile.d/conda.sh ; conda activate ; conda activate 
 # <<<<
 
+all: install_headless_test test_headless
+
 install_test:
 	#conda install --channel=conda-forge --name=base mamba -y
 	conda env remove -n megnet_test
