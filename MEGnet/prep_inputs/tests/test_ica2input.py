@@ -15,10 +15,11 @@ from ..ICA import sensor_pos2circle
 from ..ICA import read_raw, raw_preprocess, calc_ica
 from pathlib import Path
 import os, os.path as op
-from ..ICA import main
+from ..ICA import main, classify_ica
 import shutil
 import scipy
 import pygit2
+from scipy.io import savemat
 
 # =============================================================================
 # Setup input / output folders
@@ -32,6 +33,8 @@ if not op.exists(gt_gitdir):
 
 ctf_filename = op.join(raw_gitdir, '20010101','ABABABAB_airpuff_20010101_001.ds')
 ctf_test_gt = gt_gitdir
+
+results_dir = '/tmp/test/results'
 
 
 
@@ -87,7 +90,6 @@ def test_reader():
     
 def test_ctf():
     '''Regression test for ctf data'''
-    results_dir = '/tmp/test/results'
     if os.path.exists(results_dir) : shutil.rmtree(results_dir)
     os.mkdir(results_dir)
     main(
@@ -115,6 +117,24 @@ def test_ctf():
     ica = mne.preprocessing.read_ica(op.join(outdir, 'ABABABAB_airpuff_20010101_001_0-ica.fif'))
     ica_gt = mne.preprocessing.read_ica(op.join(gt_gitdir, 'ABABABAB_airpuff_20010101_001_0-ica.fif'))                          
     assert np.allclose(ica.unmixing_matrix_ , ica_gt.unmixing_matrix_)
+
+def test_classify_ica(results_dir=None, outbasename=None)
+    '''Verify consistent assessments of the inputs'''
+    outbasename = op.basename(ctf_filename)[:-3]
+    outdir = op.join(results_dir, outbasename)
+    tmp_ = op.join(results_dir, outbasename)
+    
+    ts_fname = op.join(tmp_, 'ICATimeSeries.mat')
+    arrTS = loadmat(ts_fname)['arrICATimeSeries']
+    ## Minor hack to make the time series long enough for classification
+    ica_ts = np.vstack([arrTS, arrTS])
+    savemat(ts_fname, {'arrICATimeSeries':ica_ts})
+    # Classify the data vectors
+    ica_dict = classify_ica(results_dir=results_dir, filename=ctf_filename)
+    assert np.alltrue(ica_dict['classes']==[1, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    assert np.alltrue(ica_dict['bads_idx']==[0,4,5])    
+    
+    
     
     
     

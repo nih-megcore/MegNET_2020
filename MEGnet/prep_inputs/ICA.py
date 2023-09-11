@@ -756,7 +756,7 @@ def main(filename, outbasename=None, mains_freq=60,
       outfname = f'{results_dir}/ICATimeSeries.mat' #'{file_base}-ica-ts.mat'
       savemat(outfname, {'arrICATimeSeries':ica_ts})
     
-def classify_ica(results_dir=None, outbasename=None):
+def classify_ica(results_dir=None, outbasename=None, filename=None):
     '''
     Run the ICA timeseries and spatial maps generated during the main processing
     through the MEGNET tensorflow model (using the CPU)
@@ -890,7 +890,8 @@ if __name__ == '__main__':
              save_preproc=True, save_ica=True, seedval=0, filename_raw=args.filename_raw,
              results_dir=args.results_dir)
     
-    ica_dict = classify_ica(results_dir=args.results_dir, outbasename=args.outbasename)
+    ica_dict = classify_ica(results_dir=args.results_dir, outbasename=args.outbasename,
+                            filename=filename)
     
     clean_ica(bad_comps=ica_dict['bads_idx'], results_dir=args.results_dir,
               raw_dataset=args.filename, outbasename=args.outbasename)
