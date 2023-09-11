@@ -126,8 +126,6 @@ def test_clean_ica():
     '''Confirm that the cleaned output meg matches the expected''' 
     outbasename = op.basename(ctf_filename)[:-3]
     outdir = op.join(results_dir, outbasename)
-    cleaned_fname = 
-    
     clean_ica(bad_comps=[0,4,5], results_dir=results_dir, outbasename=outbasename,
               raw_dataset=ctf_filename)
     
