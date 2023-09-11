@@ -23,6 +23,14 @@ from scipy.io import savemat, loadmat
 import pickle
 import pytest
 import glob
+import MEGnet
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+from tensorflow import keras
+from MEGnet.megnet_utilities import fPredictChunkAndVoting_parrallel
+model_path = op.join(MEGnet.__path__[0] ,  'model_v2')    # << May want to change this to function
+kModel=keras.models.load_model(model_path)
 
 
 # =============================================================================
@@ -38,12 +46,7 @@ if not op.exists(gt_gitdir):
 # Raw data
 ctf_filename = op.join(raw_gitdir, '20010101','ABABABAB_airpuff_20010101_001.ds')
 
-# Ground truth data - and megnet prepped data
-ctf_test_gt = op.join(gt_gitdir, 'CTF')
-megin_test_gt = op.join(gt_gitdir, 'MEGIN')
-kit_test_gt = op.join(gt_gitdir, 'KIT')
-fourD_test_gt = op.join(gt_gitdir, '4D')
-
+ctf_test_gt = op.join(gt_gitdir, 'CTF')  #CTF ground truth folder
 results_dir = '/tmp/test/results'
 
 # =============================================================================
@@ -137,34 +140,28 @@ def get_inputs(dirname):
     arrTS = np.load(op.join(dirname, 'ts.npy'))
     return classID, arrSP, arrTS
 
-# def crop_save(dirname):
-#     ts_fname = op.join(dirname, 'tsorig.pkl')
-#     with open(ts_fname, 'rb') as f:
-#         arrTS = pickle.load(f)
-#     arrTS = arrTS[:, :45000]
-#     np.save(op.join(dirname,'ts.npy'), arrTS)
-import MEGnet
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
-from tensorflow import keras
-from MEGnet.megnet_utilities import fPredictChunkAndVoting_parrallel
-model_path = op.join(MEGnet.__path__[0] ,  'model_v2')    # << May want to change this to function
-kModel=keras.models.load_model(model_path)
-    
-vendor = ['4D','CTF','MEGIN','KIT']
-@pytest.mark.parametrize("vendor", vendor)
-def test_vendor_classify(vendor):
-    '''Test the ICA classify on 2 examples each of Vendor data'''
-    input_dir = f'{gt_gitdir}/{vendor}/'
-    dsets = glob.glob(op.join(input_dir, '*/ts.npy'))
-    dsets = [op.dirname(i) for i in dsets]    
-    
-    for dirname in dsets:
-        cl, arrSP, arrTS = get_inputs(dirname)
-        preds, probs = fPredictChunkAndVoting_parrallel(kModel, arrTS, arrSP)
-        ica_classes = preds.argmax(axis=1)
-        assert np.alltrue(ica_classes == cl)
+def crop_save(dirname):
+    ts_fname = op.join(dirname, 'ts.pkl')
+    with open(ts_fname, 'rb') as f:
+        arrTS = pickle.load(f)
+    arrTS = arrTS[:, :45000]
+    np.save(op.join(dirname,'ts.npy'), arrTS)
+
+
+
+ctf_dsets = ['CTF/d3r','CTF/d2r','CTF/d2o','CTF/d1r']
+megin_dsets = ['MEGIN/d2s', 'MEGIN/d1s', 'MEGIN/d3s']
+kit_dsets = ['KIT/d1r', 'KIT/d2r', 'KIT/d3r', 'KIT/d4r']
+fourD_dsets = ['4D/d3r', '4D/d2r', '4D/d1w', '4D/d2w']
+dset = ctf_dsets + megin_dsets + kit_dsets + fourD_dsets
+dset = [op.join(gt_gitdir, i) for i in dset]
+
+@pytest.mark.parametrize("dset", dset)
+def test_dataset(dset):
+    cl, arrSP, arrTS = get_inputs(dset)
+    preds, probs = fPredictChunkAndVoting_parrallel(kModel, arrTS, arrSP)
+    ica_classes = preds.argmax(axis=1)
+    assert np.alltrue(ica_classes == cl)    
     
     
 def test_clean_ica():
