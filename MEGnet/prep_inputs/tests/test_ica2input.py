@@ -118,7 +118,7 @@ def test_ctf():
     ica_gt = mne.preprocessing.read_ica(op.join(gt_gitdir, 'ABABABAB_airpuff_20010101_001_0-ica.fif'))                          
     assert np.allclose(ica.unmixing_matrix_ , ica_gt.unmixing_matrix_)
 
-def test_classify_ica(results_dir=None, outbasename=None)
+def test_classify_ica(results_dir=None, outbasename=None):
     '''Verify consistent assessments of the inputs'''
     outbasename = op.basename(ctf_filename)[:-3]
     outdir = op.join(results_dir, outbasename)
