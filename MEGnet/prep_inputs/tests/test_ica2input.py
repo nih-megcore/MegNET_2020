@@ -19,7 +19,7 @@ from ..ICA import main, classify_ica
 import shutil
 import scipy
 import pygit2
-from scipy.io import savemat
+from scipy.io import savemat, loadmat
 
 # =============================================================================
 # Setup input / output folders
@@ -118,7 +118,7 @@ def test_ctf():
     ica_gt = mne.preprocessing.read_ica(op.join(gt_gitdir, 'ABABABAB_airpuff_20010101_001_0-ica.fif'))                          
     assert np.allclose(ica.unmixing_matrix_ , ica_gt.unmixing_matrix_)
 
-def test_classify_ica(results_dir=None, outbasename=None):
+def test_classify_ica():
     '''Verify consistent assessments of the inputs'''
     outbasename = op.basename(ctf_filename)[:-3]
     outdir = op.join(results_dir, outbasename)
