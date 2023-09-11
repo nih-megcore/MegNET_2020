@@ -26,14 +26,20 @@ from scipy.io import savemat, loadmat
 # Setup input / output folders
 # =============================================================================
 raw_gitdir='/tmp/TEST_ctf_data'
-gt_gitdir = '/tmp/TEST_ctf_gt' #gt for ground truth
+gt_gitdir = '/tmp/TEST_megnet_gt' #gt for ground truth
 if not op.exists(raw_gitdir):
     pygit2.clone_repository('https://github.com/nih-megcore/TEST_ctf_data.git', raw_gitdir)
 if not op.exists(gt_gitdir):    
     pygit2.clone_repository('https://github.com/nih-megcore/MEGnet_testing_data.git', gt_gitdir)
 
+# Raw data
 ctf_filename = op.join(raw_gitdir, '20010101','ABABABAB_airpuff_20010101_001.ds')
-ctf_test_gt = gt_gitdir
+
+# Ground truth data - and megnet prepped data
+ctf_test_gt = op.join(gt_gitdir, 'CTF')
+megin_test_gt = op.join(gt_gitdir, 'MEGIN')
+kit_test_gt = op.join(gt_gitdir, 'KIT')
+fourD_test_gt = op.join(gt_gitdir, '4D')
 
 results_dir = '/tmp/test/results'
 
@@ -121,11 +127,17 @@ def test_classify_ica():
     ica_dict = classify_ica(results_dir=results_dir, filename=ctf_filename)
     assert np.alltrue(ica_dict['classes']==[1, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
     assert np.alltrue(ica_dict['bads_idx']==[0,4,5])    
+
+def test_vendor_classify():
+    '''Test the ICA classify on 2 examples each of Vendor data'''
+    
+    
     
 def test_clean_ica():
     '''Confirm that the cleaned output meg matches the expected''' 
     outbasename = op.basename(ctf_filename)[:-3]
     outdir = op.join(results_dir, outbasename)
+
     clean_ica(bad_comps=[0,4,5], results_dir=results_dir, outbasename=outbasename,
               raw_dataset=ctf_filename)
     
