@@ -15,11 +15,12 @@ from ..ICA import sensor_pos2circle
 from ..ICA import read_raw, raw_preprocess, calc_ica
 from pathlib import Path
 import os, os.path as op
-from ..ICA import main, classify_ica
+from ..ICA import main, classify_ica, clean_ica
 import shutil
 import scipy
 import pygit2
 from scipy.io import savemat, loadmat
+
 
 # =============================================================================
 # Setup input / output folders
@@ -36,22 +37,9 @@ ctf_test_gt = gt_gitdir
 
 results_dir = '/tmp/test/results'
 
-
-
-# ICA(
-#     filename,
-#     outbasename=None,
-#     mains_freq=60,
-#     save_preproc=False,
-#     save_ica=False,
-#     seedval=0,
-#     results_dir=None,
-#     filename_raw=None,
-# )
-
-
-
-
+# =============================================================================
+# SSL errors with mne downloads
+# =============================================================================
 # download_path = '/tmp/test'
 # path = mne.datasets.sample.data_path(download_path)
 # megin_filename = Path(path) / 'MEG/sample/sample_audvis_raw.fif'
@@ -134,7 +122,21 @@ def test_classify_ica():
     assert np.alltrue(ica_dict['classes']==[1, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
     assert np.alltrue(ica_dict['bads_idx']==[0,4,5])    
     
+def test_clean_ica():
+    '''Confirm that the cleaned output meg matches the expected''' 
+    outbasename = op.basename(ctf_filename)[:-3]
+    outdir = op.join(results_dir, outbasename)
+    cleaned_fname = 
     
+    clean_ica(bad_comps=[0,4,5], results_dir=results_dir, outbasename=outbasename,
+              raw_dataset=ctf_filename)
+    
+    cleaned_fname = op.join(outdir, 'ica_clean.fif')
+    raw_cleaned = mne.io.read_raw_fif(cleaned_fname, preload=True)    
+    gt_fname = op.join(gt_gitdir, 'ica_clean.fif')
+    gt_raw = mne.io.read_raw_fif( gt_fname ,preload=True)
+    assert np.allclose(gt_raw.get_data(), raw_cleaned.get_data())    
+
     
     
     
