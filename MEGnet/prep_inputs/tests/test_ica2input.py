@@ -20,6 +20,9 @@ import shutil
 import scipy
 import pygit2
 from scipy.io import savemat, loadmat
+import pickle
+import pytest
+import glob
 
 
 # =============================================================================
@@ -128,9 +131,40 @@ def test_classify_ica():
     assert np.alltrue(ica_dict['classes']==[1, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
     assert np.alltrue(ica_dict['bads_idx']==[0,4,5])    
 
-def test_vendor_classify():
-    '''Test the ICA classify on 2 examples each of Vendor data'''
+def get_inputs(dirname):
+    classID = np.load(op.join(dirname, 'cl.npy'))
+    arrSP = np.load(op.join(dirname, 'sp.npy'))
+    arrTS = np.load(op.join(dirname, 'ts.npy'))
+    return classID, arrSP, arrTS
+
+# def crop_save(dirname):
+#     ts_fname = op.join(dirname, 'tsorig.pkl')
+#     with open(ts_fname, 'rb') as f:
+#         arrTS = pickle.load(f)
+#     arrTS = arrTS[:, :45000]
+#     np.save(op.join(dirname,'ts.npy'), arrTS)
+import MEGnet
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+from tensorflow import keras
+from MEGnet.megnet_utilities import fPredictChunkAndVoting_parrallel
+model_path = op.join(MEGnet.__path__[0] ,  'model_v2')    # << May want to change this to function
+kModel=keras.models.load_model(model_path)
     
+vendor = ['4D','CTF','MEGIN','KIT']
+@pytest.mark.parametrize("vendor", vendor)
+def test_vendor_classify(vendor):
+    '''Test the ICA classify on 2 examples each of Vendor data'''
+    input_dir = f'{gt_gitdir}/{vendor}/'
+    dsets = glob.glob(op.join(input_dir, '*/ts.npy'))
+    dsets = [op.dirname(i) for i in dsets]    
+    
+    for dirname in dsets:
+        cl, arrSP, arrTS = get_inputs(dirname)
+        preds, probs = fPredictChunkAndVoting_parrallel(kModel, arrTS, arrSP)
+        ica_classes = preds.argmax(axis=1)
+        assert np.alltrue(ica_classes == cl)
     
     
 def test_clean_ica():
