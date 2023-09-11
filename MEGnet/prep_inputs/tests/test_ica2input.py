@@ -47,7 +47,8 @@ if not op.exists(gt_gitdir):
 ctf_filename = op.join(raw_gitdir, '20010101','ABABABAB_airpuff_20010101_001.ds')
 
 ctf_test_gt = op.join(gt_gitdir, 'CTF')  #CTF ground truth folder
-results_dir = '/tmp/test/results'
+results_dir = '/tmp/megnet_testing_results'
+if not op.exists(results_dir): os.mkdir(results_dir)
 
 # =============================================================================
 # SSL errors with mne downloads
