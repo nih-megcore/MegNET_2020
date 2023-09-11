@@ -101,15 +101,15 @@ def test_ctf():
         assert op.exists(op.join(outdir, f'component{i+1}.png'))
         assert op.exists(op.join(outdir, f'component{i+1}.mat'))
     ica_ts = scipy.io.loadmat(op.join(outdir, 'ICATimeSeries.mat'))['arrICATimeSeries']
-    ica_ts_gt = scipy.io.loadmat(op.join(gt_gitdir, 'ICATimeSeries.mat'))['arrICATimeSeries']
+    ica_ts_gt = scipy.io.loadmat(op.join(ctf_test_gt, 'ICATimeSeries.mat'))['arrICATimeSeries']
     assert np.allclose(ica_ts, ica_ts_gt)
     
     raw = mne.io.read_raw_fif(op.join(outdir, 'ABABABAB_airpuff_20010101_001_250srate_meg.fif'))
-    raw_gt = mne.io.read_raw_fif(op.join(gt_gitdir, 'ABABABAB_airpuff_20010101_001_250srate_meg.fif'))
+    raw_gt = mne.io.read_raw_fif(op.join(ctf_test_gt, 'ABABABAB_airpuff_20010101_001_250srate_meg.fif'))
     assert np.allclose(raw.get_data(), raw_gt.get_data())
 
     ica = mne.preprocessing.read_ica(op.join(outdir, 'ABABABAB_airpuff_20010101_001_0-ica.fif'))
-    ica_gt = mne.preprocessing.read_ica(op.join(gt_gitdir, 'ABABABAB_airpuff_20010101_001_0-ica.fif'))                          
+    ica_gt = mne.preprocessing.read_ica(op.join(ctf_test_gt, 'ABABABAB_airpuff_20010101_001_0-ica.fif'))                          
     assert np.allclose(ica.unmixing_matrix_ , ica_gt.unmixing_matrix_)
 
 def test_classify_ica():
@@ -143,7 +143,7 @@ def test_clean_ica():
     
     cleaned_fname = op.join(outdir, 'ica_clean.fif')
     raw_cleaned = mne.io.read_raw_fif(cleaned_fname, preload=True)    
-    gt_fname = op.join(gt_gitdir, 'ica_clean.fif')
+    gt_fname = op.join(ctf_test_gt, 'ica_clean.fif')
     gt_raw = mne.io.read_raw_fif( gt_fname ,preload=True)
     assert np.allclose(gt_raw.get_data(), raw_cleaned.get_data())    
 
