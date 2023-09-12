@@ -45,9 +45,10 @@ if not op.exists(raw_gitdir):
 userid, key1, key2 = os.environ['TESTID'],os.environ['TESTKEY1'], os.environ['TESTKEY2']
 repoaddr = os.environ['MEGNET_TEST_REPO_ADDR']
 keypair = pygit2.Keypair(userid, key1, key2,'')
+callbacks = pygit2.RemoteCallbacks(credentials=keypair)
 
 if not op.exists(gt_gitdir):    
-    pygit2.clone_repository(repoaddr, gt_gitdir)
+    pygit2.clone_repository(repoaddr, gt_gitdir, callbacks=callbacks)
 
 # Raw data
 ctf_filename = op.join(raw_gitdir, '20010101','ABABABAB_airpuff_20010101_001.ds')
