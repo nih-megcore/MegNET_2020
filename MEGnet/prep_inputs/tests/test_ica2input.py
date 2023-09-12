@@ -40,8 +40,14 @@ raw_gitdir='/tmp/TEST_ctf_data'
 gt_gitdir = '/tmp/TEST_megnet_gt' #gt for ground truth
 if not op.exists(raw_gitdir):
     pygit2.clone_repository('https://github.com/nih-megcore/TEST_ctf_data.git', raw_gitdir)
+
+#Setup for ssh download
+userid, key1, key2 = os.environ['TESTID'],os.environ['TESTKEY1'], os.environ['TESTKEY2']
+repoaddr = os.environ['MEGNET_TEST_REPO_ADDR']
+keypair = pygit2.Keypair(userid, key1, key2,'')
+
 if not op.exists(gt_gitdir):    
-    pygit2.clone_repository('https://github.com/nih-megcore/MEGnet_testing_data.git', gt_gitdir)
+    pygit2.clone_repository(repoaddr, gt_gitdir)
 
 # Raw data
 ctf_filename = op.join(raw_gitdir, '20010101','ABABABAB_airpuff_20010101_001.ds')
