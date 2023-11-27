@@ -273,7 +273,7 @@ def fPredictChunkAndVoting(kModel, lTimeSeries, arrSpatialMap, arrY, intModelLen
             
             dctWeightedPredictions[intStartTime] = lPrediction*dctTimeChunkVotes[intStartTime]
 
-        arrScanPrediction = np.stack(dctWeightedPredictions.values())
+        arrScanPrediction = np.stack(list(dctWeightedPredictions.values()))
         arrScanPrediction = arrScanPrediction.mean(axis=0)
         arrScanPrediction = arrScanPrediction/arrScanPrediction.sum()
         lPredictionsVote.append(arrScanPrediction)
@@ -411,7 +411,7 @@ def fPredictChunkAndVoting_parrallel(kModel, lTimeSeries, arrSpatialMap, intMode
             
             dctWeightedPredictions[intStartTime] = lPrediction*dctTimeChunkVotes[intStartTime]
 
-        arrScanPrediction = np.stack(dctWeightedPredictions.values())
+        arrScanPrediction = np.stack(list(dctWeightedPredictions.values()))
         arrScanPrediction = arrScanPrediction.mean(axis=0)
         arrScanPrediction = arrScanPrediction/arrScanPrediction.sum()
         lPredictionsVote.append(arrScanPrediction)
