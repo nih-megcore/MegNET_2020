@@ -489,7 +489,7 @@ def calc_ica(raw, file_base=None, save=False, results_dir=None, seedval=0):
     if save==True:
         out_filename = file_base + '_{}-ica.fif'.format(str(seedval))
         out_filename = os.path.join(results_dir, out_filename)
-        ica.save(out_filename)
+        ica.save(out_filename, overwrite=True)
     return ica
 
 # =============================================================================
