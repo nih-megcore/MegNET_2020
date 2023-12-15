@@ -335,7 +335,7 @@ def read_raw(filename, do_assess_bads=False):
     '''
     ext = os.path.splitext(filename)[-1]
     if ext == '.fif':
-        raw = mne.io.read_raw_fif(filename, preload=True)
+        raw = mne.io.read_raw_fif(filename, preload=True, allow_maxshield=True)
         if do_assess_bads==True:
             _bads=assess_bads(filename)
             raw.info['bads'] = _bads['noisy'] + _bads['flat']
