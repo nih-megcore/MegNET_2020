@@ -5,10 +5,6 @@
 # @author: Jeff Stout
 
 
-# TODO:  Apply bad channel finder for fif prior to ICA 
-# READ HCP ICAs in using MNE-hcp
-# Do we need to write topoplot to file - or direct classifiction?
-
 import os, os.path as op
 import numpy as np
 import matplotlib.pyplot as plt
@@ -459,8 +455,8 @@ def raw_preprocess(raw, mains_freq=None):
     Returns instance of mne raw
     '''
     resample_freq = 250
-    #notch_freqs = range(mains_freq, int(resample_freq * 2/3), mains_freq)
-    raw.notch_filter(mains_freq) #notch_freqs)
+    notch_freqs = range(mains_freq, int(resample_freq * 2/3), mains_freq)
+    raw.notch_filter(notch_freqs) 
     raw.resample(resample_freq)
     raw.filter(1.0, 100)
     return raw
@@ -633,7 +629,8 @@ def circle_plot(circle_pos=None, data=None, out_fname=None):
 
 def main(filename, outbasename=None, mains_freq=60, 
              save_preproc=False, save_ica=False, seedval=0,
-             results_dir=None, filename_raw=None, do_assess_bads=False, bad_channels=[]):
+             results_dir=None, filename_raw=None, do_assess_bads=False, bad_channels=[], 
+             create_outdir=True):
     '''
         Perform all of the steps to preprocess the ica maps:
         Read raw data
@@ -689,7 +686,8 @@ def main(filename, outbasename=None, mains_freq=60,
         file_base = os.path.splitext(file_base)[0]
     
     results_dir = os.path.join(results_dir, file_base)
-    if not os.path.exists(results_dir): os.mkdir(results_dir)
+    if create_outdir == True:
+        if not os.path.exists(results_dir): os.mkdir(results_dir)
     
     if save_preproc==True:
         out_fname = os.path.join(results_dir, file_base+'_250srate_meg.fif')
