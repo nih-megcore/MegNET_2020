@@ -6,6 +6,7 @@
 
 
 import os, os.path as op
+from pathlib import PosixPath
 import numpy as np
 import matplotlib.pyplot as plt
 import mne
@@ -34,6 +35,12 @@ import PIL.Image
 import MEGnet
 from MEGnet.megnet_utilities import fPredictChunkAndVoting_parrallel
 import functools
+
+from mne.io.ctf.ctf import RawCTF
+from mne.io.kit.kit import RawKIT
+from mne.io.bti.bti import RawBTi
+from mne.io.fiff.raw import Raw
+raw_typelist = [RawCTF, RawKIT, RawBTi, Raw]
 
 
 # =============================================================================
@@ -455,6 +462,7 @@ def raw_preprocess(raw, mains_freq=None):
     Returns instance of mne raw
     '''
     resample_freq = 250
+    mains_freq = int(mains_freq)
     notch_freqs = range(mains_freq, int(resample_freq * 2/3), mains_freq)
     raw.notch_filter(notch_freqs) 
     raw.resample(resample_freq)
@@ -643,7 +651,7 @@ def main(filename, outbasename=None, mains_freq=60,
         Parameters
         ----------
         
-        filename : str
+        filename : str or Raw MNE data object
             Path to file
         filename_raw : str
             Required for MEGIN datasets
@@ -665,7 +673,13 @@ def main(filename, outbasename=None, mains_freq=60,
             Assess bad channels if not already done
             
     '''
-    raw = read_raw(filename)
+    if type(filename) == str | type(filename) == PosixPath:
+        raw = read_raw(filename)
+    elif type(filename) in raw_typelist:
+        raw = filename
+    else:
+        raise BaseException('Could not interpret input variable "filename"')
+        
     if len(bad_channels) > 0:
         print('dropping bad channels\n')
         print(bad_channels)
