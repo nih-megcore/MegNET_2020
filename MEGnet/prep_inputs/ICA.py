@@ -463,7 +463,7 @@ def raw_preprocess(raw, mains_freq=None):
     '''
     resample_freq = 250
     mains_freq = int(mains_freq)
-    notch_freqs = range(mains_freq, int(resample_freq * 2/3), mains_freq)
+    notch_freqs = np.arange(mains_freq, resample_freq * 2/3, mains_freq)
     raw.notch_filter(notch_freqs) 
     raw.resample(resample_freq)
     raw.filter(1.0, 100)
@@ -635,10 +635,10 @@ def circle_plot(circle_pos=None, data=None, out_fname=None):
     #return matrix_out
     
 
-def main(filename, outbasename=None, mains_freq=60, 
+def main(filename, outbasename=None, mains_freq=60.0, 
              save_preproc=False, save_ica=False, seedval=0,
-             results_dir=None, filename_raw=None, do_assess_bads=False, bad_channels=[], 
-             create_outdir=True):
+             results_dir=None, filename_raw=None, do_assess_bads=False,
+             run_preproc=True, bad_channels=[]):
     '''
         Perform all of the steps to preprocess the ica maps:
         Read raw data
@@ -663,6 +663,9 @@ def main(filename, outbasename=None, mains_freq=60,
             Line frequency 50 or 60 Hz
         save_preproc : Bool 
             Save the preprocessed data
+        run_preproc : Bool 
+            If you are entering a Raw MNE object that has been preprocessed
+            alreay - Set this to False.  Defaults to True.
         save_ica : Bool 
             Save the ica output 
         seedval : Int
@@ -700,8 +703,7 @@ def main(filename, outbasename=None, mains_freq=60,
         file_base = os.path.splitext(file_base)[0]
     
     results_dir = os.path.join(results_dir, file_base)
-    if create_outdir == True:
-        if not os.path.exists(results_dir): os.mkdir(results_dir)
+    if not os.path.exists(results_dir): os.mkdir(results_dir)
     
     if save_preproc==True:
         out_fname = os.path.join(results_dir, file_base+'_250srate_meg.fif')
