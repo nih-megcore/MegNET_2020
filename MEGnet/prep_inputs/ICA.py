@@ -673,7 +673,7 @@ def main(filename, outbasename=None, mains_freq=60,
             Assess bad channels if not already done
             
     '''
-    if type(filename) == str | type(filename) == PosixPath:
+    if (type(filename) == str) | (type(filename) == PosixPath):
         raw = read_raw(filename)
     elif type(filename) in raw_typelist:
         raw = filename
