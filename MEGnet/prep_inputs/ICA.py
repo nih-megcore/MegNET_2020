@@ -463,7 +463,7 @@ def raw_preprocess(raw, mains_freq=None):
     Returns instance of mne raw
     '''
     resample_freq = 250
-    mains_freq = int(mains_freq)
+    mains_freq = int(mains_freq[0])
     notch_freqs = np.arange(mains_freq, resample_freq * 2/3, mains_freq)
     raw.notch_filter(notch_freqs) 
     raw.resample(resample_freq)
