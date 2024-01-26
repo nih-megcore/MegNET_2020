@@ -463,7 +463,7 @@ def raw_preprocess(raw, mains_freq=None):
     Returns instance of mne raw
     '''
     resample_freq = 250
-    mains_freq = int(mains_freq[0])
+    mains_freq = int(mains_freq)
     notch_freqs = np.arange(mains_freq, resample_freq * 2/3, mains_freq)
     raw.notch_filter(notch_freqs) 
     raw.resample(resample_freq)
@@ -898,7 +898,7 @@ if __name__ == '__main__':
     filename = args.filename
     mains_freq = float(args.line_freq)
     
-    main(filename, outbasename=args.outbasename, mains_freq=[mains_freq], 
+    main(filename, outbasename=args.outbasename, mains_freq=mains_freq, 
              save_preproc=True, save_ica=True, seedval=0, filename_raw=args.filename_raw,
              results_dir=args.results_dir)
     
