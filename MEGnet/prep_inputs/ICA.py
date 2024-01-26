@@ -7,6 +7,7 @@
 
 import os, os.path as op
 from pathlib import PosixPath
+from copy import deepcopy
 import numpy as np
 import matplotlib.pyplot as plt
 import mne
@@ -638,7 +639,7 @@ def circle_plot(circle_pos=None, data=None, out_fname=None):
 def main(filename, outbasename=None, mains_freq=60.0, 
              save_preproc=False, save_ica=False, seedval=0,
              results_dir=None, filename_raw=None, do_assess_bads=False,
-             run_preproc=True, bad_channels=[]):
+             bad_channels=[]):
     '''
         Perform all of the steps to preprocess the ica maps:
         Read raw data
@@ -663,9 +664,6 @@ def main(filename, outbasename=None, mains_freq=60.0,
             Line frequency 50 or 60 Hz
         save_preproc : Bool 
             Save the preprocessed data
-        run_preproc : Bool 
-            If you are entering a Raw MNE object that has been preprocessed
-            alreay - Set this to False.  Defaults to True.
         save_ica : Bool 
             Save the ica output 
         seedval : Int
@@ -679,7 +677,7 @@ def main(filename, outbasename=None, mains_freq=60.0,
     if (type(filename) == str) | (type(filename) == PosixPath):
         raw = read_raw(filename)
     elif type(filename) in raw_typelist:
-        raw = filename
+        raw = deepcopy(filename)
     else:
         raise BaseException('Could not interpret input variable "filename"')
         
