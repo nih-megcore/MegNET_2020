@@ -9,13 +9,16 @@ CONDA_ACTIVATE=source $$(conda info --base)/etc/profile.d/conda.sh ; conda activ
 all: install_headless_test test_headless
 
 install_test:
-	#conda install --channel=conda-forge --name=base mamba -y
 	conda env remove -n megnet_test
 	mamba create --override-channels --channel=conda-forge --name=megnet_test mne pip pytest -y
 	($(CONDA_ACTIVATE) megnet_test ; pip install -e .['testing']  )
 
+install_data:
+	tmp_dir=$(pwd)
+	($(CONDA_ACTIVATE) datalad ; git clone ${MEG_DATA_SERVER}:test_data /data/NIGHTLY_TESTDATA/test_data ; cd /data/NIGHTLY_TESTDATA/test_data;  datalad get /data/NIGHTLY_TESTDATA/test_data/* ) 
+	cd ${tmp_dir}  #Revert out of datalad download location
+
 install_headless_test:
-	#conda install --channel=conda-forge --name=base mamba -y
 	conda env remove -n megnet_test
 	mamba create --override-channels --channel=conda-forge --name=megnet_test mne pip pytest "vtk>=9.2=*osmesa*" "mesalib=21.2.5" -y
 	($(CONDA_ACTIVATE) megnet_test ; pip install -e .['testing'] )
