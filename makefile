@@ -6,7 +6,7 @@ SHELL=/bin/bash
 CONDA_ACTIVATE=source $$(conda info --base)/etc/profile.d/conda.sh ; conda activate ; conda activate 
 # <<<<
 
-all: install_headless_test test_headless
+all: install_headless_test install_data test_headless
 
 install_test:
 	conda env remove -n megnet_test
