@@ -4,7 +4,8 @@
 # @author: Allison Nugent
 # @author: Jeff Stout
 
-
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 import os, os.path as op
 from pathlib import PosixPath
 from copy import deepcopy
@@ -23,7 +24,7 @@ from matplotlib.pyplot import show
 import matplotlib
 matplotlib.use('agg')
 
-import warnings
+import logging
 import unittest.mock
 from mne.defaults import _INTERPOLATION_DEFAULT, _EXTRAPOLATE_DEFAULT, _BORDER_DEFAULT, _handle_default
 from mne.utils import logger
@@ -337,6 +338,11 @@ def read_raw(filename, do_assess_bads=False):
     Raw MNE instance
 
     '''
+    #Case of BTI in folder
+    if (op.isdir(str(filename))) & (not str(filename).endswith('.ds')):
+        return mne.io.read_raw_bti(filename, preload=True, 
+                                  head_shape_fname=None)
+    
     ext = os.path.splitext(filename)[-1]
     if ext == '.fif':
         raw = mne.io.read_raw_fif(filename, preload=True, allow_maxshield=True)
@@ -789,6 +795,7 @@ def classify_ica(results_dir=None, outbasename=None, filename=None):
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
+    
     from tensorflow import keras
     model_path = op.join(MEGnet.__path__[0] ,  'model_v2')
     # This is set to use CPU in initial import
