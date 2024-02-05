@@ -837,6 +837,7 @@ def clean_ica(bad_comps=None, results_dir=None, outbasename=None,
     ica.apply(raw)    
     outfname = op.join(results_dir, 'ica_clean.fif')
     raw.save(outfname)
+    ica.save(ica_fname.replace('_0-ica.fif', '_0-ica_applied.fif'))
     
 def check_datatype(filename):               # function to determine the file format of MEG data 
     '''Check datatype based on the vendor naming convention to choose best loader'''
