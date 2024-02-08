@@ -10,7 +10,7 @@ USAGE:
 """
 import mne
 from os import path, makedirs, cpu_count
-from glob2 import glob
+from glob import glob
 from mne.utils import verbose
 import matplotlib.pyplot as plt
 plt.rcParams.setdefault
@@ -22,12 +22,13 @@ def plot_all(results_dir=None, ica_file=None, data_file=None, apply_filter=False
     if results_dir is not None or None in [ica_file, data_file]:
         print('Seems like you look for MEGnet quality check; searching for data_file and ica_file...')
         
-        data_file = glob(f'{results_dir}/**/*_250srate_meg.fif')
+        results_dir = path.abspath(results_dir)
+        data_file = glob(f'{results_dir}/*_250srate_meg.fif')
         if len(data_file)==1:   data_file = data_file[0] 
         else: raise ValueError(f'Single data_file was expected but {len(data_file)} files were found '
                                f'in {results_dir}, i.e., {data_file}')
         
-        ica_file = glob(f'{results_dir}/**/*_0-ica_applied.fif')
+        ica_file = glob(f'{results_dir}/*_0-ica_applied.fif')
         ica_file = ica_file[0] if len(ica_file)==1 else \
             ValueError(f'Single ica_file was expected but {len(ica_file)} files were found in {results_dir}, '
                        f'i.e., {ica_file}')
@@ -52,8 +53,16 @@ def plot_all(results_dir=None, ica_file=None, data_file=None, apply_filter=False
     makedirs(f'{MEGnetExtDir}', exist_ok=True)
     fid = open(f'{MEGnetExtDir}/Explained_variance_ratio.csv', 'w')
     exp_var = ica.get_explained_variance_ratio(raw)
-    fid.writelines("data_file, \tgrad, \tmag\n")
-    fid.writelines(f"{data_file.split('/')[-1]}, \t{exp_var['grad']}, \t{exp_var['mag']}")
+    sen_types = set(raw.get_channel_types())
+    if 'grad' not in sen_types:
+        fid.writelines("data_file, \tmag\n")
+        fid.writelines(f"{data_file.split('/')[-1]}, \t{exp_var['mag']}")
+    elif 'mag' not in sen_types:
+        fid.writelines("data_file, \tgrad\n")
+        fid.writelines(f"{data_file.split('/')[-1]}, \t{exp_var['grad']}")
+    else:
+        fid.writelines("data_file, \tgrad, \tmag\n")
+        fid.writelines(f"{data_file.split('/')[-1]}, \t{exp_var['grad']}, \t{exp_var['mag']}")
     fid.close()
     
     comp_plot = ica.plot_components(title=f'Removed ICs indices: {ica.exclude}', show=False)
