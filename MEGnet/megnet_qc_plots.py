@@ -15,6 +15,7 @@ from mne.utils import verbose
 import matplotlib.pyplot as plt
 plt.rcParams.setdefault
 plt.rcParams["axes.xmargin"] = 0
+mne.viz.set_browser_backend('matplotlib', verbose=None)
 print(__doc__)
 
 @verbose
