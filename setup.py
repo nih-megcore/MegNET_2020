@@ -17,7 +17,7 @@ setuptools.setup(
         "Operating System :: Linux/Unix",
     ],
     include_package_data=True,
-    install_requires=['mne>=1.2','tensorflow'], 
+    install_requires=['mne>=1.2','tensorflow','pandas','scikit-learn','keras<3.0'], 
     scripts=['MEGnet/prep_inputs/ICA.py'],
     extras_require={
         "training": ['openpyxl',
