@@ -477,9 +477,12 @@ def raw_preprocess(raw, mains_freq=None):
     return raw
 
 def thresh_get_good_segments(raw, thresh=dict(mag=5000e-15)):
+    flatmagthresh = 10e-15
+    flatgradthresh = 10e-13
     evts = mne.make_fixed_length_events(raw, duration=5.0)
     rej_dict = thresh
-    epochs = mne.Epochs(raw, evts, reject=rej_dict, preload=True, baseline=None)
+    flat_dict = dict(mag=flatmagthresh, grad=flatgradthresh)
+    epochs = mne.Epochs(raw, evts, reject=rej_dict, flat=flat_dict, preload=True, baseline=None)
     return epochs
 
 def z_get_good_segments(epochs, std_thresh=6):
