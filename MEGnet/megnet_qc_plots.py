@@ -4,11 +4,13 @@
 Created on Mon Feb  5 16:05:31 2024
 @author: Amit Jaiswal, Megin Oy, Espoo, Finland  <amit.jaiswal@megin.fi> 
 USAGE: 
-    * This script is meant for quality check of ICA applied through MEGnet.
-    * Run as: megnet_qc_plots.py --results_dir <directory holding megnet outputs>
+    * This script is meant to check the quality of ICA applied through MEGnet and 
+       override the ICA application with user's own selections.
+    * Run as: megnet_qc_plots.py --results_dir <directory holding MEGnet outputs>
     * Check as: megnet_qc_plots.py --help
 """
 import mne
+from numpy import arange
 from os import path, makedirs, cpu_count
 from glob import glob
 from mne.utils import verbose
@@ -19,7 +21,8 @@ mne.viz.set_browser_backend('matplotlib', verbose=None)
 print(__doc__)
 
 @verbose
-def plot_all(results_dir=None, ica_file=None, data_file=None, apply_filter=False, block=False, verbose=None):    
+def plot_all(results_dir=None, ica_file=None, data_file=None, apply_filter=False, lfreq=None,
+             hfreq=None, block=False, apply_ica=False, verbose=None):    
     if results_dir is not None or None in [ica_file, data_file]:
         print('Seems like you look for MEGnet quality check; searching for data_file and ica_file...')
         
@@ -43,7 +46,9 @@ def plot_all(results_dir=None, ica_file=None, data_file=None, apply_filter=False
         mne.utils.warn(f"\n\nWARNING: Lowpass is {raw.info['lowpass']}, bandpass should be applied. Use --apply_filter.")
     if apply_filter:
         print(f"Data lowpass = {raw.info['lowpass']}; applying filter...")
-        raw.notch_filter(raw.info['line_freq'], picks=['meg', 'eeg', 'eog', 'ecg'], filter_length='auto', 
+        notch_freqs = arange(raw.info['line_freq'], hfreq, raw.info['line_freq'])
+        if len(notch_freqs):
+            raw.notch_filter(raw.info['line_freq'], picks=['meg', 'eeg', 'eog', 'ecg'], filter_length='auto', 
                          notch_widths=2, trans_bandwidth=1.0, n_jobs=cpu_count(), verbose=None)
         raw.filter(1, 98, picks=['meg', 'eeg', 'eog', 'ecg'], filter_length='auto', l_trans_bandwidth='auto', 
                    h_trans_bandwidth='auto', n_jobs=cpu_count(), method='fir', phase='zero', fir_window='hamming', 
@@ -100,6 +105,15 @@ def plot_all(results_dir=None, ica_file=None, data_file=None, apply_filter=False
         plt.close()
         del fig
     print(f'\nCheck plots in directory:\n{MEGnetExtDir}')
+    
+    if apply_ica:
+        print('\nApplying ICA on the original data...')
+        raw = mne.io.read_raw_fif(data_file, allow_maxshield=True, preload=True, verbose=None)
+        ica.apply( raw )    
+        new_file = data_file.replace(path.dirname(data_file), 
+                                     path.dirname(ica_file)).replace('.fif', '_ICAmanual.fif')
+        raw.save(new_file, overwrite=True, verbose=None)
+        print(f'ICA was checked/applied manually and saved to: {new_file}.\n')
 
 if __name__ == '__main__':
     plt.ioff()
@@ -109,10 +123,14 @@ if __name__ == '__main__':
     parser.add_argument('-ica',    '--ica_file',     default=None, type=str, help='ica file.')
     parser.add_argument('-data',   '--data_file',    default=None, type=str, help='MEG data file')
     parser.add_argument('-filter', '--apply_filter', action='store_true',    help='Apply filter, in case of raw?')
+    parser.add_argument('-f1',     '--lfreq',        default=1.,   type=float,  help='Lower cut-off (Hz)')
+    parser.add_argument('-f2',     '--hfreq',        default=48.,  type=float,  help='Higher cut-off (Hz)')
     parser.add_argument('-block',  '--block',        action='store_true',    help='Block figure?')
+    parser.add_argument('-apply',  '--apply_ica',    action='store_true',       help='Apply ICA manually?')
     args = parser.parse_args()
     # print(args)
     plot_all(results_dir=args.results_dir, ica_file=args.ica_file, data_file=args.data_file, 
-             apply_filter=args.apply_filter, block=args.block)
+             apply_filter=args.apply_filter, lfreq=args.lfreq, hfreq=args.hfreq, block=args.block,
+             apply_ica=args.apply_ica)
     print('...DONE.')
     
