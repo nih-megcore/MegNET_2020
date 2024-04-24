@@ -6,8 +6,9 @@ Created on Mon Feb  5 16:05:31 2024
 USAGE: 
     * This script is meant to check the quality of ICA applied through MEGnet and 
        override the ICA application with user's own selections.
-    * Run as: megnet_qc_plots.py --results_dir <directory holding MEGnet outputs>
-    * Check as: megnet_qc_plots.py --help
+    * Run as: python megnet_qc_plots.py --results_dir <directory holding megnet outputs> # to check
+    * Run as: python megnet_qc_plots.py --ica_file <xxxxxx_0-ica_applied.fif> --data_file <xxxxxx_raw_tsss.fif --apply_filter --block --apply_ica # to check and apply
+    * Check as: python megnet_qc_plots.py --help
 """
 import mne
 from numpy import arange
@@ -45,7 +46,7 @@ def plot_all(results_dir=None, ica_file=None, data_file=None, apply_filter=False
     if not apply_filter and raw.info['lowpass']>100:
         mne.utils.warn(f"\n\nWARNING: Lowpass is {raw.info['lowpass']}, bandpass should be applied. Use --apply_filter.")
     if apply_filter:
-        print(f"Data lowpass = {raw.info['lowpass']}; applying filter...")
+        print(f"Data lowpass = {raw.info['lowpass']}; applying filter (only for visualization) ...")
         notch_freqs = arange(raw.info['line_freq'], hfreq, raw.info['line_freq'])
         if len(notch_freqs):
             raw.notch_filter(raw.info['line_freq'], picks=['meg', 'eeg', 'eog', 'ecg'], filter_length='auto', 
