@@ -125,7 +125,7 @@ def make_shuffled_nparrs(dframe_in, subj_stack):
     shuff_sp = []
     shuff_cl = []
     
-    for idx in dframe.key.to_list():
+    for idx in dframe_in.key.to_list():
         shuff_ts.append(subj_stack[idx]['ts'])
         shuff_sp.append(subj_stack[idx]['sp'])
         shuff_cl.append(subj_stack[idx]['cl'])
@@ -157,11 +157,12 @@ np.save(op.join(out_topdir,'te_arrCL.npy'), te_arrCL)
 # =============================================================================
 # Load the already saved arrays
 # =============================================================================
-out_topdir = op.join(train_dir, 'Inputs', 'FULL_nparr', 'train')
+out_topdir = '/data/EnigmaMeg/MEGNET/KEEP_TEST_NPY2/FULL_nparr/train'
+#op.join(train_dir, 'Inputs', 'FULL_nparr', 'train')
 tr_arrTS = np.load(op.join(out_topdir,'tr_arrTS.npy'))
 tr_arrSP = np.load(op.join(out_topdir,'tr_arrSP.npy'))
 tr_arrCL = np.load(op.join(out_topdir, 'tr_arrCL.npy'))
-
+out_topdir = '/data/EnigmaMeg/MEGNET/KEEP_TEST_NPY2/FULL_nparr/test'
 te_arrTS = np.load(op.join(out_topdir,'te_arrTS.npy'))
 te_arrSP = np.load(op.join(out_topdir,'te_arrSP.npy'))
 te_arrCL = np.load(op.join(out_topdir, 'te_arrCL.npy'))
@@ -174,11 +175,10 @@ te_arrCL = np.load(op.join(out_topdir, 'te_arrCL.npy'))
 assert tr_arrTS.shape[0]==tr_arrSP.shape[0]
 assert tr_arrCL.shape[0]==tr_arrSP.shape[0]
 
-
 # =============================================================================
 # 
 # =============================================================================
-NB_EPOCH = 20 #40
+NB_EPOCH = 100
 BATCH_SIZE = 300  
 VERBOSE = 1
 
@@ -216,8 +216,8 @@ kModel.compile(
     metrics=[f1_score, 'accuracy']
     )
 
-earlystop = tf.keras.callbacks.EarlyStopping(monitor='loss',
-                                 patience=4,
+earlystop = tf.keras.callbacks.EarlyStopping(monitor='val_f1_score',
+                                 patience=8,
                                  restore_best_weights=True)
 
 
@@ -235,11 +235,37 @@ def save_weights_and_history(history, kModel, cv_num):
     kModel.save(f'{epo_dir}/model')
     # with open(f'{epo_dir}/score', 'wb') as file_sc:
     #     pickle.dump(score[idx], file_sc)
+
+from MEGnet.prep_inputs.augmentation_generator import MEGnetAugSequence
+
+train_seq = MEGnetAugSequence(
+    arrSP=tr_arrSP, arrTS=tr_arrTS, arrCL=tr_arrCL,
+    batch_size=BATCH_SIZE,
+    noise_snr=0.1,      # tune: noise std as fraction of per-sample TS std
+    p_flip=0.5,         # 50% coupled flip
+    cutoff_hz=120.0,
+    sfreq=250.0,
+    num_classes=4,
+    shuffle=True,
+    seed=0,
+)
+
+history_tmp = kModel.fit(
+    train_seq,
+    epochs=NB_EPOCH,
+    verbose=VERBOSE,
+    validation_data=(dict(spatial_input=te_arrSP, temporal_input=te_arrTS),
+                     one_hot(te_arrCL, 4)),
+    class_weight=class_weights,
+    callbacks=[earlystop],
+)
+
+
               
-history_tmp = kModel.fit(x=dict(spatial_input=tr_arrSP, temporal_input=tr_arrTS), y=one_hot(tr_arrCL,4),
-                     batch_size=BATCH_SIZE, epochs=NB_EPOCH, verbose=VERBOSE,  
-                     validation_data=(dict(spatial_input=te_arrSP, temporal_input=te_arrTS), one_hot(te_arrCL,4)),
-                     class_weight=class_weights, callbacks=[earlystop])
+#history_tmp = kModel.fit(x=dict(spatial_input=tr_arrSP, temporal_input=tr_arrTS), y=one_hot(tr_arrCL,4),
+#                     batch_size=BATCH_SIZE, epochs=NB_EPOCH, verbose=VERBOSE,  
+#                     validation_data=(dict(spatial_input=te_arrSP, temporal_input=te_arrTS), one_hot(te_arrCL,4)),
+#                     class_weight=class_weights, callbacks=[earlystop])
 
 epochs = range(len(history_tmp.history['f1_score']))
 pylab.plot(epochs, history_tmp.history['f1_score'], '+', epochs, history_tmp.history['val_f1_score'],'.')
