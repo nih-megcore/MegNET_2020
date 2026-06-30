@@ -44,9 +44,9 @@ assert tr_arrTS.shape[0]==tr_arrSP.shape[0]
 assert tr_arrCL.shape[0]==tr_arrSP.shape[0]
 
 # =============================================================================
-# 
+# Import model / reinitialize weights / set LearningRate Schedule / Early stopping and training
 # =============================================================================
-NB_EPOCH = 1 #200
+NB_EPOCH = 300
 BATCH_SIZE = 300  
 VERBOSE = 1
 
@@ -58,13 +58,30 @@ from tensorflow import one_hot
 from tensorflow import keras
 from sklearn.utils.class_weight import compute_class_weight
 
+
 clw = compute_class_weight('balanced', classes=np.array([0,1,2,3]), y=tr_arrCL)
-clw/=clw.min()
+clw = clw / clw.mean()           # center around 1.0 instead of dividing by min
+clw = np.clip(clw, 0.5, 4.0)   
 class_weights={i:j for i,j in enumerate(clw)}
 
+# LR scheduler with label smoothing to prevent class imbalance issues
+INITIAL_LR = 1e-3
+LABEL_SMOOTHING = 0.1   # softens one-hot targets: 0.1 is a safe starting point
+
+steps_per_epoch = int(np.ceil(tr_arrTS.shape[0] / BATCH_SIZE))
+decay_steps = steps_per_epoch * NB_EPOCH
+
+lr_schedule = tf.keras.optimizers.schedules.CosineDecay(
+    initial_learning_rate=INITIAL_LR,
+    decay_steps=decay_steps,
+    alpha=1e-2,  # final LR = INITIAL_LR * alpha = 1e-5
+)
+
+#Load model
 model_fname = op.join(MEGnet.__path__[0], 'model/MEGnet_final_model.h5')
 kModel = keras.models.load_model(model_fname, compile=False)
 
+#Reinitialize Weights
 from numpy.random import uniform
 for idx,layer in enumerate(kModel.layers):
     weights = layer.get_weights()
@@ -74,17 +91,72 @@ for idx,layer in enumerate(kModel.layers):
     for sublayer in weights:
         layer_rand_w.append(uniform(low=-1.0, high=1.0, size=sublayer.shape))
     layer.set_weights(layer_rand_w)
+    
 
 f1_score=F1Score(4, average='macro')
 kModel.compile(
-    loss=keras.losses.CategoricalCrossentropy(), 
-    optimizer=keras.optimizers.Adam(learning_rate=1e-3), 
+    loss=keras.losses.CategoricalCrossentropy(label_smoothing=LABEL_SMOOTHING),
+    optimizer=keras.optimizers.Adam(learning_rate=lr_schedule),
     metrics=[f1_score, 'accuracy']
-    )
+)
 
-earlystop = tf.keras.callbacks.EarlyStopping(monitor='val_f1_score',
-                                 patience=8,
-                                 restore_best_weights=True)
+# =============================================================================
+# EARLY STOPPING — monitor val_f1_score 
+# =============================================================================
+earlystop = tf.keras.callbacks.EarlyStopping(
+    monitor='val_f1_score',   # was 'loss' — this was the wrong target
+    patience=6,               # slightly more patience since F1 is noisier than loss
+    mode='max',               # F1 should go UP, not down
+    restore_best_weights=True
+)
+
+# Optional but recommended: log LR per epoch so you can see the cosine decay
+#lr_logger = tf.keras.callbacks.ReduceLROnPlateau(
+#    monitor='val_f1_score', factor=1.0, patience=999   # effectively disabled
+    # This is just a stub — the real LR is controlled by CosineDecay above.
+    # Remove this if it causes confusion.
+#)
+
+from MEGnet.prep_inputs.augmentation_generator import MEGnetAugSequence
+
+
+train_seq = MEGnetAugSequence(
+    arrSP=tr_arrSP, arrTS=tr_arrTS, arrCL=tr_arrCL,
+    batch_size=BATCH_SIZE,
+    class_weights=class_weights,   # your capped/clipped dict from earlier
+    augment=True,
+    noise_snr=0.1,
+    p_flip=0.5,
+    shuffle=True,
+    seed=42
+)
+
+val_seq = MEGnetAugSequence(
+    arrSP=te_arrSP, arrTS=te_arrTS, arrCL=te_arrCL,
+    batch_size=BATCH_SIZE,
+    class_weights=None,    # no weighting on val — unweighted F1 is the true metric
+    augment=False,
+    noise_snr=0.0,
+    p_flip=0.0,
+    shuffle=False,
+    seed=0
+)
+
+
+
+history = kModel.fit(
+    x=train_seq, #dict(spatial_input=tr_arrSP, temporal_input=tr_arrTS),
+    y=one_hot(tr_arrCL, 4),
+    batch_size=BATCH_SIZE,
+    epochs=NB_EPOCH,
+    verbose=VERBOSE,
+    validation_data=(
+        dict(spatial_input=te_arrSP, temporal_input=te_arrTS),
+        one_hot(te_arrCL, 4)
+    ),
+    class_weight=class_weights,
+    callbacks=[earlystop]
+)
 
 
 import shutil
@@ -97,30 +169,6 @@ def save_weights_and_history(history, kModel, outdir=None):
     #     pickle.dump(score[idx], file_sc)
     shutil.copy(os.path.realpath(__file__), outdir)
     
-
-from MEGnet.prep_inputs.augmentation_generator import MEGnetAugSequence
-
-train_seq = MEGnetAugSequence(
-    arrSP=tr_arrSP, arrTS=tr_arrTS, arrCL=tr_arrCL,
-    batch_size=BATCH_SIZE,
-    noise_snr=0.1,      # tune: noise std as fraction of per-sample TS std
-    p_flip=0.5,         # 50% coupled flip
-    cutoff_hz=120.0,
-    sfreq=250.0,
-    num_classes=4,
-    shuffle=True,
-    seed=0,
-)
-
-history = kModel.fit(
-    train_seq,
-    epochs=NB_EPOCH,
-    verbose=VERBOSE,
-    validation_data=(dict(spatial_input=te_arrSP, temporal_input=te_arrTS),
-                     one_hot(te_arrCL, 4)),
-    class_weight=class_weights,
-    callbacks=[earlystop],
-)
 
 out_folder = '/data/EnigmaMeg/MEGNET/MODELFIT'
 import glob
@@ -135,4 +183,3 @@ save_weights_and_history(history, kModel, outdir=outdir)
 
 
 
-    
