@@ -40,20 +40,22 @@ def clean_KIT(tasktype):
 # =============================================================================
 # Only run if needed otherwise just load csv file from pkl dir    
 # =============================================================================
-tmp=MEGnet.__path__[0]
+# tmp=MEGnet.__path__[0]
 
 
-dframe = pd.read_csv(op.join(tmp, 'prep_inputs', 'training','Inputs','NIH_CAM_HCP_62750','Final_3site.csv'))
-dframe = dframe.loc[::20]  #This is the longform dataframe - get back to subject level
-dframe.drop_duplicates(['participant_id', 'Site', 'TaskType'], inplace=True)
-dframe.drop(['idx','Unnamed: 0.1', 'Unnamed: 0', 'ICAnum','ClassID','key'], axis=1, inplace=True)
-final = dframe
+# dframe = pd.read_csv(op.join(tmp, 'prep_inputs', 'training','Inputs','NIH_CAM_HCP_62750','Final_3site.csv'))
+# dframe = dframe.loc[::20]  #This is the longform dataframe - get back to subject level
+# dframe.drop_duplicates(['participant_id', 'Site', 'TaskType'], inplace=True)
+# dframe.drop(['idx','Unnamed: 0.1', 'Unnamed: 0', 'ICAnum','ClassID','key'], axis=1, inplace=True)
+# final = dframe
 
-final.drop_duplicates(['Site','participant_id','TaskType'], inplace=True)
-final.reset_index(inplace=True, drop=True)
-final['key']=range(len(final)) #Set the key to index data
+# final.drop_duplicates(['Site','participant_id','TaskType'], inplace=True)
+# final.reset_index(inplace=True, drop=True)
+# final['key']=range(len(final)) #Set the key to index data
 
-
+final = pd.read_csv('/vf/users/EnigmaMeg/BIDS/ICA/ICA_megnet/PKL/dframe_TESTTRAIN.csv')
+assert 'Glasgow' not in final.SheetName.unique()
+assert 'REMPE' not in final.SheetName.unique()
 
 def get_inputs(dataset_info):
     '''
@@ -83,6 +85,8 @@ def get_inputs(dataset_info):
     for i in range(1,21): spat_.append(loadmat(op.join(data_dir, f'component{str(i)}.mat'))['array'])
     assert len(spat_)==20
     spat_ = np.stack(spat_)
+    if spat_.shape != (20,120, 120, 3):
+        spat_ =  spat_ [:,25:-35,16:-14,:]
     assert spat_.shape == (20,120, 120, 3)
     
     spat_resized = spat_ #[:,25:-35,16:-14,:]
@@ -187,55 +191,51 @@ def extract_and_pickle_all_datasets(dframe, pkl_dir):
         del TS_tmp, SP_tmp, CLid_tmp, ts_pklfile, sp_file, cl_file
         
 
-train_dir = op.join(MEGnet.__path__[0], 'prep_inputs','training')
-np_arr_topdir = op.join(train_dir, 'Inputs')
-
-pkl_topdir = op.join(train_dir, 'Inputs', 'PKL')
-os.mkdir(pkl_topdir)
+# os.mkdir(pkl_topdir)
+pkl_topdir = '/data/EnigmaMeg/BIDS/ICA/ICA_megnet/PKL'
 extract_and_pickle_all_datasets(final, pkl_topdir)
-
-final.to_csv(op.join(pkl_topdir, 'final_dframe.csv'))
 
 
 # =============================================================================
 # 
 # =============================================================================
-pkl_dir = '/home/jstout/src/MegNET2022/MEGnet/prep_inputs/training/Inputs/PKL'
+pkl_dir = '/vf/users/EnigmaMeg/BIDS/ICA/ICA_megnet/PKL' # '/home/jstout/src/MegNET2022/MEGnet/prep_inputs/training/Inputs/PKL'
 pkl_topdir = pkl_dir
-dframe_hold = pd.read_csv(op.join(pkl_topdir, 'dframe_holdout.csv'))
-dframe_train = pd.read_csv(op.join(pkl_topdir, 'dframe_train.csv'))
+# dframe_hold = pd.read_csv(op.join(pkl_topdir, 'dframe_holdout.csv'))
+dframe_train = pd.read_csv(op.join(pkl_topdir, 'dframe_TESTTRAIN.csv'))
+assert 'Glasgow' not in dframe_train.SheetName.unique()
+assert 'REMPE' not in dframe_train.SheetName.unique()
 
 
 
-
-# =============================================================================
-# Holdout
-# =============================================================================
-holds_fname = op.join(pkl_topdir, 'hold_data.pkl')
-if not op.exists(holds_fname):    
-    hold_list = []
-    for key in dframe_hold.key.to_list():
-        hold_list.append(subj_stack[key])
+# # =============================================================================
+# # Holdout
+# # =============================================================================
+# holds_fname = op.join(pkl_topdir, 'hold_data.pkl')
+# if not op.exists(holds_fname):    
+#     hold_list = []
+#     for key in dframe_hold.key.to_list():
+#         hold_list.append(subj_stack[key])
     
-    holds_fname = op.join(pkl_topdir, 'hold_data.pkl')    
-    with open(holds_fname, 'wb') as f:
-        pickle.dump(hold_list, f)
-else:
-    with open(holds_fname, 'rb') as f: hold_list=pickle.load(f)
+#     holds_fname = op.join(pkl_topdir, 'hold_data.pkl')    
+#     with open(holds_fname, 'wb') as f:
+#         pickle.dump(hold_list, f)
+# else:
+#     with open(holds_fname, 'rb') as f: hold_list=pickle.load(f)
 
-# =============================================================================
-# Train data
-# =============================================================================
-train_fname=op.join(pkl_topdir, 'train_data.pkl') 
-if not op.exists(train_fname):
-    train_list = []
-    for key in dframe_train.key.to_list():
-        train_list.append(subj_stack[key])
+# # =============================================================================
+# # Train data
+# # =============================================================================
+# train_fname=op.join(pkl_topdir, 'train_data.pkl') 
+# if not op.exists(train_fname):
+#     train_list = []
+#     for key in dframe_train.key.to_list():
+#         train_list.append(subj_stack[key])
     
-    with open(train_fname, 'wb') as f:
-        pickle.dump(train_list, f)
-else:
-    with open(train_fname, 'rb') as f: train_list = pickle.load(f)
+#     with open(train_fname, 'wb') as f:
+#         pickle.dump(train_list, f)
+# else:
+#     with open(train_fname, 'rb') as f: train_list = pickle.load(f)
 
 
 
@@ -334,7 +334,7 @@ def get_cv_npyArr(sample=None,
         return hold, test_train
         
 #Create holdout
-tmp_holdout = cvSplits.main(kfolds=5, foldNormFields=crossval_cols, data_dframe=final)
+tmp_holdout = cvSplits.main(kfolds=5, foldNormFields=crossval_cols, data_dframe=dframe_train)
 holdout_dframe_idxs = tmp_holdout[0]['test_indx']  #First CV test set ~20% of data
 final['HoldOut']=False
 final.loc[holdout_dframe_idxs, 'HoldOut']=True
@@ -356,24 +356,25 @@ tsttr_sp, tsttr_ts, tsttr_clID = tsttr['sp'], tsttr['ts'], tsttr['clID']
 # =============================================================================
 # Create testing CV splits
 # =============================================================================
-tt_final = final.drop(index=holdout_dframe_idxs)
+dframe_train['idx']=range(len(dframe_train))
+tt_final =  dframe_train            #final.drop(index=holdout_dframe_idxs)
 tt_final.reset_index(inplace=True, drop=True)
-cv = cvSplits.main(kfolds=7, foldNormFields=crossval_cols, data_dframe=tt_final)
+cv = cvSplits.main(kfolds=6, foldNormFields=crossval_cols, data_dframe=tt_final)
 for cv_num in cv.keys():
-    final[f'Fold{str(cv_num)}']=False
+    tt_final[f'Fold{str(cv_num)}']=False
     
     #Get indexes from the subselected dataframe (basically removed holdout)
     sub_idx_train = cv[cv_num]['train_indx']
     sub_idx_test = cv[cv_num]['test_indx']
     
     #Get the index in the full dataframe
-    final_train_idx = tt_final.loc[sub_idx_train,'idx']
-    final_test_idx = tt_final.loc[sub_idx_test,'idx']
+    tt_final_train_idx = tt_final.loc[sub_idx_train,'idx']
+    tt_final_test_idx = tt_final.loc[sub_idx_test,'idx']
     
     #Initialize all
-    final[f'Fold{str(cv_num)}']='Holdout'
-    final.loc[final_train_idx, f'Fold{str(cv_num)}'] = 'Train'
-    final.loc[final_test_idx, f'Fold{str(cv_num)}'] ='Test'
+    tt_final[f'Fold{str(cv_num)}']='Holdout'
+    tt_final.loc[tt_final_train_idx, f'Fold{str(cv_num)}'] = 'Train'
+    tt_final.loc[tt_final_test_idx, f'Fold{str(cv_num)}'] ='Test'
     print(cv_num)
 
 # Verify holdouts are not in train/test    !!!
@@ -434,7 +435,7 @@ def make_longform_dframe(dframe, class_ID=None):
     return dframe_longform
 
 
-final_longform = make_longform_dframe(final, class_ID=class_ID)
+final_longform = make_longform_dframe(tt_final, class_ID=class_ID)
 out_fname = op.join(op.dirname(np_arr_topdir), 'final_longform_dframe.csv')
 final_longform.to_csv(out_fname)
 

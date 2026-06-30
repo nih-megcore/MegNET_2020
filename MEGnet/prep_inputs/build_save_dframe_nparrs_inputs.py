@@ -7,7 +7,6 @@ Created on Fri May 12 16:03:30 2023
 """
 
 import pandas as pd
-import MEGnet
 from os import path as op
 import os
 import glob
@@ -16,52 +15,28 @@ import numpy as np
 import copy
 
 
-tmp=MEGnet.__path__[0]
-class_table_path = op.join(tmp, 'prep_inputs', 'training', 'ICA_combined_participants.tsv')
+# tmp=MEGnet.__path__[0]
+class_table_path = '/data/EnigmaMeg/MEGNET/MegNET_2020/MEGnet/prep_inputs/training/ICA_combined_participants.tsv'
 class_table = pd.read_csv(class_table_path, sep='\t')
 if 'Unnamed: 0' in class_table.columns:
     class_table.drop('Unnamed: 0', axis=1, inplace=True)
 if 'idx' in class_table.columns:
     class_table.drop('idx', axis=1, inplace=True)
 
-
-
-dataset_path = op.join(MEGnet.__path__[0], 'prep_inputs','training','ICAs')
-dsets = glob.glob(op.join(dataset_path, '*_meg'))
-dsets += glob.glob(op.join(dataset_path, '*-sss'))
-dsets += glob.glob(op.join(dataset_path, '*_wrkmem'))
-dsets += glob.glob(op.join(dataset_path, '*_rest'))
-dsets += glob.glob(op.join(dataset_path, '*_AD'))
-dsets += glob.glob(op.join(dataset_path, '*_NY'))
-datasets = pd.DataFrame(dsets, columns=['dirname'])
-
-def get_subjid(dirname):
-    tmp = op.basename(dirname)
-    tmp=tmp.split('_')[0]
-    if tmp[0:4]!='sub-':
-        tmp='sub-'+tmp
-    return tmp
-
-def get_type(dirname):
-    '''Extract the task type from the dataset name'''
-    if 'task' in dirname:
-        return [i[5:] for i in op.basename(dirname).split('_') if i[0:4]=='task'][0]
-    else:
-        return op.basename(dirname).split('_')[-1]
-
-def clean_KIT(tasktype):
-    if tasktype in  ['AD','NY']:
-        return 'rest'
-    else:
-        return tasktype
+#Make sure to run make_links.sh before doing this
+os.chdir('/vf/users/EnigmaMeg/BIDS/ICA/ICA_megnet/INPUTS')
     
+class_table['exists']=False
+for idx, row in class_table.iterrows():
+    if op.exists(row.FILENAME):
+        class_table.loc[idx, 'exists']=True
+        
+assert class_table[class_table.exists==False].__len__() < 8
+# Remove missing files   
+class_table = class_table[class_table.exists==True]
+final = class_table
 
-datasets['subjid'] = datasets.dirname.apply(get_subjid)
-datasets['type'] = datasets.dirname.apply(get_type)
-datasets['type'] = datasets.type.apply(clean_KIT)
-
-final = pd.merge(class_table, datasets, left_on=['participant_id', 'TaskType'], right_on=['subjid','type'])
-dropidx=final.loc[(final.participant_id=='sub-ON12688') & (final.type_y =='rest')].index
+dropidx = final.query('type=="rest" and  participant_id=="sub-ON12688"').index
 final = final.drop(index=dropidx)
 dropidx = final[final.TaskType=='artifact'].index
 final = final.drop(index=dropidx)
@@ -96,6 +71,8 @@ def get_inputs(dataset_info):
     for i in range(1,21): spat_.append(loadmat(op.join(data_dir, f'component{str(i)}.mat'))['array'])
     assert len(spat_)==20
     spat_ = np.stack(spat_)
+    if spat_.shape != (20,120, 120, 3):
+        spat_ = spat_[:,25:-35,16:-14,:]
     assert spat_.shape == (20,120, 120, 3)
     
     spat_resized = spat_ #[:,25:-35,16:-14,:]
@@ -182,8 +159,8 @@ def extract_all_datasets(dframe):
 
 
 
-train_dir = op.join(MEGnet.__path__[0], 'prep_inputs','training')
-np_arr_topdir = op.join(train_dir, 'Inputs')
+train_dir = '/vf/users/EnigmaMeg/BIDS/ICA/ICA_megnet/TRAINING_DATA' #op.join(MEGnet.__path__[0], 'prep_inputs','training')
+np_arr_topdir = '/data/EnigmaMeg/BIDS/ICA/ICA_megnet/INPUTS'
 arrTS_fname = op.join(np_arr_topdir, 'arrTS.npy')
 arrSP_fname = op.join(np_arr_topdir, 'arrSP.npy')
 arrC_ID_fname = op.join(np_arr_topdir, 'arrC_ID.npy')
@@ -192,7 +169,7 @@ arrC_ID_fname = op.join(np_arr_topdir, 'arrC_ID.npy')
 # =============================================================================
 # Save all of the data out
 # =============================================================================
-
+final['dirname']=final.FILENAME
 #Save all      
 if not os.path.exists(np_arr_topdir):  
     os.mkdir(np_arr_topdir)
@@ -212,6 +189,7 @@ final.to_csv(op.join(op.dirname(np_arr_topdir), 'final_subjICA_dframe.csv'))
 # Cross Validation
 # =============================================================================
 crossval_cols = ['Site', 'TaskType', 'Scanner', 'age', 'sex']
+# import MEGnet
 from MEGnet.prep_inputs import cvSplits
 final['idx']=final.index
 

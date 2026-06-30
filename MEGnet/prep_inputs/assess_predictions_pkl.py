@@ -18,14 +18,14 @@ import pickle
 import MEGnet
 from MEGnet.megnet_utilities import fGetStartTimesOverlap
 from MEGnet.megnet_utilities import fPredictChunkAndVoting_parrallel as fPredictChunkAndVoting
-import tensorflow_addons
+# import tensorflow_addons
 from sklearn.metrics import confusion_matrix, f1_score
 import sys
 
-
-pkl_dir = '/home/jstout/src/MegNET2022/MEGnet/prep_inputs/training/Inputs/PKL'
+pkl_dir = '/vf/users/EnigmaMeg/BIDS/ICA/ICA_megnet/PKL'
+# pkl_dir = '/home/jstout/src/MegNET2022/MEGnet/prep_inputs/training/Inputs/PKL'
 pkl_topdir = pkl_dir
-dframe_hold = pd.read_csv(op.join(pkl_topdir, 'dframe_holdout.csv'))
+dframe_hold = pd.read_csv(op.join(pkl_topdir, 'dframe_holdout_new.csv'))
 
 # =============================================================================
 # Run the prediction scoring

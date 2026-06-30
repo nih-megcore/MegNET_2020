@@ -8,7 +8,7 @@ Created on Thu Jul 13 21:23:50 2023
 
 
 import pandas as pd
-import MEGnet
+
 from os import path as op
 import os
 import glob
@@ -16,16 +16,22 @@ from scipy.io import loadmat
 import numpy as np
 import copy
 import pickle
-from MEGnet.megnet_utilities import fGetStartTimesOverlap
+
 from numpy.random import randint
 from numpy.random import shuffle
 import copy
 
+import MEGnet
+from MEGnet.megnet_utilities import fGetStartTimesOverlap
 tmp=MEGnet.__path__[0]
 
+train_dir = '/vf/users/EnigmaMeg/BIDS/ICA/ICA_megnet/TRAINING_DATA_despike'
+pkl_topdir = '/vf/users/EnigmaMeg/BIDS/ICA/ICA_megnet/PKL'
+os.chdir(pkl_topdir)
+#train_dir = op.join(MEGnet.__path__[0], 'prep_inputs','training')
+#pkl_topdir = op.join(train_dir, 'Inputs', 'PKL')
 
-train_dir = op.join(MEGnet.__path__[0], 'prep_inputs','training')
-pkl_topdir = op.join(train_dir, 'Inputs', 'PKL')
+
 # os.mkdir(pkl_topdir)
 # extract_and_pickle_all_datasets(final, pkl_topdir)
 # dframe = pd.read_csv('/home/jstout/src/MegNET2022/MEGnet/prep_inputs/training/final_subjICA_dframe.csv')
@@ -42,7 +48,11 @@ pkl_topdir = op.join(train_dir, 'Inputs', 'PKL')
 # =============================================================================
 # Just load the proper dframe from pkl dir
 # =============================================================================
-dframe = pd.read_csv(op.join(pkl_topdir, 'final_dframe.csv'))
+dframe = pd.read_csv(op.join(pkl_topdir, 'final_TESTTRAIN.csv'))
+assert 'REMPE' not in dframe.SheetName.unique()
+assert 'Glasgow' not in dframe.SheetName.unique()
+# positive assertion
+assert 'CAMCAN_smt_mvcorr' in dframe.SheetName.unique()
 
 # =============================================================================
 # Assemble time series from the 
@@ -52,6 +62,7 @@ arrTS = []
 arrSP = []
 arrCL = []
 
+dframe.key = range(len(dframe))
 for idx, row in dframe.iterrows():
     input_vec = row
     indir = op.join(pkl_topdir, f'{input_vec.Site}_{input_vec.subjid}_{input_vec.TaskType}')
@@ -79,6 +90,12 @@ def prep_ts_blocks(arrTimeSeries, overlap=3750, normalize=True):
     for i,start in enumerate(starts): 
         blocks[:,:, i] = copy.deepcopy(arrTimeSeries[:,start:start+15000]) 
     
+    multiplier = 10
+    stds=np.std(blocks,axis=1)
+    maxes=np.max(blocks,axis=1)    
+    blocks_with_spikes = np.unique(np.where(maxes > stds*multiplier)[1])
+    blocks = np.delete(blocks, blocks_with_spikes, axis=-1)
+    
     if normalize==True:
         testTimeSeries = blocks #copy.deepcopy(arrScanTimeSeries[intStartTime:intStartTime+intModelLen])
         min_vals = np.min(testTimeSeries, axis=1, keepdims=True)
@@ -90,12 +107,17 @@ def prep_ts_blocks(arrTimeSeries, overlap=3750, normalize=True):
     return testTimeSeries
 
 subj_stack = {}
+drop_idx=[]
 for idx, _ in enumerate(arrTS): 
+    print(idx)
     current_TS = arrTS[idx]
     current_sp = arrSP[idx]
     current_cl = arrCL[idx]
     #Chop temporal series into blocks
     ts_tmp = prep_ts_blocks(current_TS)
+    if ts_tmp.shape[2]==0:
+        drop_idx.append(dframe.loc[idx,'FILENAME'])
+        continue
     ts_out = np.vstack([ ts_tmp[:,:,i] for i in range(ts_tmp.shape[2])])
     repeats = ts_tmp.shape[2]
     #Repeat the spatial maps and class    
@@ -108,7 +130,7 @@ for idx, _ in enumerate(arrTS):
                        'id':f'{input_series.Site}_{input_series.subjid}_{input_series.TaskType}'
                        }
 
-assert len(subj_stack)==len(dframe)
+assert len(subj_stack)==len(dframe)-len(drop_idx)
 
 
 
@@ -138,17 +160,27 @@ def make_shuffled_nparrs(dframe_in, subj_stack):
 dframe_train=pd.DataFrame(dframe[dframe.Fold0=='Train'])
 dframe_test=pd.DataFrame(dframe[dframe.Fold0=='Test'])
 
+train_drop_idxs = dframe_train.query(f'FILENAME in {drop_idx}').index
+dframe_train.drop(train_drop_idxs, inplace=True)
+
+test_drop_idxs = dframe_test.query(f'FILENAME in {drop_idx}').index
+dframe_test.drop(test_drop_idxs, inplace=True)
+
+
 tr_arrTS, tr_arrSP, tr_arrCL = make_shuffled_nparrs(dframe_train, subj_stack) 
 te_arrTS, te_arrSP, te_arrCL = make_shuffled_nparrs(dframe_test, subj_stack) 
 
 #Holdout has already been processed and saved out as pickle data
 # hd_arrTS, hd_arrSP, hd_arrCL = make_shuffled_nparrs(dframe_hold, subj_stack)
 
-out_topdir = op.join(train_dir, 'Inputs', 'FULL_nparr', 'train')
+out_topdir = op.join(train_dir, 'train_w_rej10')
+if not op.exists(out_topdir): os.mkdir(out_topdir)
 np.save(op.join(out_topdir,'tr_arrTS.npy'), tr_arrTS)
 np.save(op.join(out_topdir,'tr_arrSP.npy'), tr_arrSP)
 np.save(op.join(out_topdir,'tr_arrCL.npy'), tr_arrCL)
 
+out_topdir = op.join(train_dir, 'test_w_rej10')
+if not op.exists(out_topdir): os.mkdir(out_topdir)
 np.save(op.join(out_topdir,'te_arrTS.npy'), te_arrTS)
 np.save(op.join(out_topdir,'te_arrSP.npy'), te_arrSP)
 np.save(op.join(out_topdir,'te_arrCL.npy'), te_arrCL)
