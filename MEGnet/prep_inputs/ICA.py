@@ -813,7 +813,7 @@ def classify_ica(results_dir=None, outbasename=None, filename=None):
     from tensorflow import keras
     model_path = op.join(MEGnet.__path__[0] ,  'model_v2')
     # This is set to use CPU in initial import
-    kModel=keras.models.load_model(model_path)
+    kModel=keras.models.load_model(model_path, compile=False)
     
     #Set output names
     if outbasename != None:
