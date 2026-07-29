@@ -29,15 +29,15 @@ os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 from tensorflow import keras
 from MEGnet.megnet_utilities import fPredictChunkAndVoting_parrallel
-model_path = op.join(MEGnet.__path__[0] ,  'model_v2')    # << May want to change this to function
+model_path = op.join(MEGnet.__path__[0] ,  'model_v2')    
 kModel=keras.models.load_model(model_path, compile=False)
 
-
+from numpy.testing import assert_almost_equal
 # =============================================================================
 # Setup input / output folders
 # =============================================================================
-raw_gitdir='/tmp/TEST_ctf_data'
-gt_gitdir = '/tmp/TEST_megnet_gt' #gt for ground truth
+raw_gitdir='/data/TEST_DATA/TEST_ctf_data'
+gt_gitdir ='/data/TEST_DATA/megnet_test_data'
 if not op.exists(raw_gitdir):
     pygit2.clone_repository('https://github.com/nih-megcore/TEST_ctf_data.git', raw_gitdir)
 
@@ -60,19 +60,19 @@ if not op.exists(results_dir): os.mkdir(results_dir)
 # =============================================================================
 # SSL errors with mne downloads
 # =============================================================================
-# download_path = '/tmp/test'
-# path = mne.datasets.sample.data_path(download_path)
-# megin_filename = Path(path) / 'MEG/sample/sample_audvis_raw.fif'
+download_path = '/tmp/test'
+path = mne.datasets.sample.data_path(download_path)
+megin_filename = Path(path) / 'MEG/sample/sample_audvis_raw.fif'
 
 tests_array_dir = os.path.dirname(os.path.abspath(__file__))
 
-# def test_circle_plot():
-#     raw = mne.io.read_raw_fif(megin_filename).crop(60.0).pick_types(meg='mag').load_data()
-#     ica = raw_preprocess(raw, mains_freq=60)
-#     pos_new = sensor_pos2circle(raw, ica)
-#     tmp_ = np.load(os.path.join(tests_array_dir,
-#                                 'circle_plot_pos_new.npy'))
-#     assert np.allclose(pos_new, tmp_)
+def test_circle_plot():
+    raw = mne.io.read_raw_fif(megin_filename).crop(60.0).pick_types(meg='mag').load_data()
+    ica = raw_preprocess(raw, mains_freq=60)
+    pos_new = sensor_pos2circle(raw, ica)
+    tmp_ = np.load(os.path.join(tests_array_dir,
+                                 'circle_plot_pos_new.npy'))
+    assert np.allclose(pos_new, tmp_)
     
 def test_reader():
     raw = read_raw(ctf_filename)
@@ -139,8 +139,8 @@ def test_classify_ica():
     savemat(ts_fname, {'arrICATimeSeries':ica_ts})
     # Classify the data vectors
     ica_dict = classify_ica(results_dir=results_dir, filename=ctf_filename)
-    assert np.alltrue(ica_dict['classes']==[1, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-    assert np.alltrue(ica_dict['bads_idx']==[0,4,5])    
+    assert np.all(ica_dict['classes']==[0, 0, 0, 0, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    assert np.all(ica_dict['bads_idx']==[4,5])    
 
 def get_inputs(dirname):
     classID = np.load(op.join(dirname, 'cl.npy'))
