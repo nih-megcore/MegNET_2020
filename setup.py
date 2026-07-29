@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="MEGnet", 
-    version="0.2",
+    version="0.2.1",
     description="Create ICA features and classify ICA components",
     long_description=long_description,
     long_description_content_type="text/markdown",

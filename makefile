@@ -9,8 +9,8 @@ CONDA_ACTIVATE=source $$(conda info --base)/etc/profile.d/conda.sh ; conda activ
 all: install_headless_test install_data test_headless
 
 install_test:
-	conda env remove -n megnet_test
-	mamba create --override-channels --channel=conda-forge --name=megnet_test mne pip pytest -y
+	conda env remove -n megnet_test -y
+	mamba create --override-channels --channel=conda-forge --name=megnet_test "python<3.12" "mne=1.5" pip pytest -y
 	($(CONDA_ACTIVATE) megnet_test ; pip install -e .['testing']  )
 
 install_data:
