@@ -721,7 +721,7 @@ def main(filename, outbasename=None, mains_freq=60.0,
         file_base = os.path.splitext(file_base)[0]
     
     results_dir = os.path.join(results_dir, file_base)
-    if not os.path.exists(results_dir): os.mkdir(results_dir)
+    if not os.path.exists(results_dir): os.makedirs(results_dir)
     
     if save_preproc==True:
         out_fname = os.path.join(results_dir, file_base+'_250srate_meg.fif')
