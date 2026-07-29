@@ -30,7 +30,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = ""
 from tensorflow import keras
 from MEGnet.megnet_utilities import fPredictChunkAndVoting_parrallel
 model_path = op.join(MEGnet.__path__[0] ,  'model_v2')    # << May want to change this to function
-kModel=keras.models.load_model(model_path)
+kModel=keras.models.load_model(model_path, compile=False)
 
 
 # =============================================================================
