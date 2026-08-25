@@ -1,3 +1,0 @@
-#[submodule "MEGnet/prep_inputs/training"]
-#	path = MEGnet/prep_inputs/training
-#	url = https://github.com/nih-megcore/MegNET_2020_training.git
